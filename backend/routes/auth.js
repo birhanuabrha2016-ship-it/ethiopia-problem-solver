@@ -1,13 +1,4 @@
-const express = require("express");
-const router = express.Router();
-const bcrypt = require("bcryptjs");
-const User = require("../models/User");
-const Question = require("../models/Question");
-const Answer = require("../models/Answer");
-const auth = require("../middleware/auth");
-const crypto = require('crypto');
-const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
-// REGISTER USER
+// REGISTER USER (AUTO-CONFIRMED FOR TESTING)
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, bio } = req.body;
@@ -22,207 +13,35 @@ router.post("/register", async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create verification token
-const verificationToken = crypto.randomBytes(32).toString('hex');
-const verificationTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    // Create verification token (optional - we won't use it)
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationTokenExpiry = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
 
-// Create new user
-const newUser = new User({
-  name,
-  email,
-  password: hashedPassword,
-  bio,
-  verificationToken,
-  verificationTokenExpiry
-});
+    // Create new user
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      bio,
+      verificationToken,
+      verificationTokenExpiry
+    });
 
-await newUser.save();
+    await newUser.save();
 
-// Send verification email
-await sendVerificationEmail(email, verificationToken);
+    // AUTO-CONFIRM USER (SKIP EMAIL VERIFICATION)
+    // This sets the user as verified immediately without sending email
+    newUser.isVerified = true;
+    newUser.verificationToken = undefined;
+    newUser.verificationTokenExpiry = undefined;
+    await newUser.save();
 
-res.status(201).json({ 
-  message: "Registration successful! Please check your email to verify your account." 
-});
-
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-
-// LOGIN USER
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user.isVerified) {
-  return res.status(401).json({ message: "Please verify your email before logging in" });
-}
-    if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    // Create JWT Token
-    const jwt = require("jsonwebtoken");
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      "you process.env.JWT_SECRET", // <--- THIS IS GOOD! It already uses an environment variable.
-      { expiresIn: "7d" }
-    );
-
-    // Send response (without password)
-    const userResponse = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      bio: user.bio,
-      role: user.role
-    };
-
-    res.status(200).json({
-      message: "Login successful",
-      token,
-      user: userResponse
+    // Send response - user can login immediately
+    res.status(201).json({ 
+      message: "Registration successful! You can now login." 
     });
 
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
 });
-
-// GET USER PROFILE (Protected)
-router.get("/profile/:userId", auth, async (req, res) => {
-  try {
-    // Find user by ID (excluding password)
-    const user = await User.findById(req.params.userId).select('-password');
-    
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    
-    res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-
-// GET USER'S QUESTIONS
-router.get("/:userId/questions", async (req, res) => {
-  try {
-    const questions = await Question.find({ user: req.params.userId })
-      .sort({ createdAt: -1 });
-    
-    res.status(200).json(questions);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-
-// GET USER'S ANSWERS
-router.get("/:userId/answers", async (req, res) => {
-  try {
-    const answers = await Answer.find({ user: req.params.userId })
-      .populate("question", "title")
-      .sort({ createdAt: -1 });
-    
-    res.status(200).json(answers);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-// VERIFY EMAIL
-router.get("/verify-email/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-    
-    // Find user with valid token
-    const user = await User.findOne({
-      verificationToken: token,
-      verificationTokenExpiry: { $gt: Date.now() }
-    });
-    
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired verification token" });
-    }
-    
-    // Update user
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    user.verificationTokenExpiry = undefined;
-    
-    await user.save();
-    
-    res.status(200).json({ message: "Email verified successfully! You can now login." });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-// FORGOT PASSWORD
-router.post("/forgot-password", async (req, res) => {
-  try {
-    const { email } = req.body;
-    
-    // Find user
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    
-    // Create reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetPasswordTokenExpiry = Date.now() + 60 * 60 * 1000; // 1 hour
-    
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordTokenExpiry = resetPasswordTokenExpiry;
-    
-    await user.save();
-    
-    // Send reset email
-    await sendPasswordResetEmail(email, resetToken);
-    
-    res.status(200).json({ message: "Password reset email sent!" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-// RESET PASSWORD
-router.post("/reset-password/:token", async (req, res) => {
-  try {
-    const { token } = req.params;
-    const { password } = req.body;
-    
-    // Find user with valid token
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordTokenExpiry: { $gt: Date.now() }
-    });
-    
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset token" });
-    }
-    
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    
-    // Update user
-    user.password = hashedPassword;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordTokenExpiry = undefined;
-    
-    await user.save();
-    
-    res.status(200).json({ message: "Password reset successfully! You can now login." });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-});
-module.exports = router;
