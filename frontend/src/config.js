@@ -1,10 +1,12 @@
-// config.js
-const config = {
-  // Your backend API address
-  API_URL: 'http://192.168.137.128:5000',
-  
-  // Your frontend app address
-  APP_URL: 'http://192.168.137.128:3000'
-};
+// config.js - THIS SMARTLY CHOOSES THE RIGHT SETTINGS
+let config;
+
+if (process.env.NODE_ENV === 'production') {
+  // If we are on the live server, use the production settings
+  config = require('./config.prod').default;
+} else {
+  // If we are on our computer, use the development settings
+  config = require('./config.dev').default;
+}
 
 export default config;

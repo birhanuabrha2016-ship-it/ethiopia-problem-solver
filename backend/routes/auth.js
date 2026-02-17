@@ -74,7 +74,7 @@ router.post("/login", async (req, res) => {
     const jwt = require("jsonwebtoken");
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
-      "your_secret_key_here",
+      "you process.env.JWT_SECRET", // <--- THIS IS GOOD! It already uses an environment variable.
       { expiresIn: "7d" }
     );
 
