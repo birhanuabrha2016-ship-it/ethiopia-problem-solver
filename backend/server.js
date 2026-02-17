@@ -16,12 +16,12 @@ mongoose.connect(process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/ethiopia_
 .then(() => console.log("MongoDB Connected Successfully"))
 .catch((err) => console.log("MongoDB Connection Error:", err));
 
-// Middleware
 app.use(cors({
   origin: [
-    'http://localhost:3000', 
-    'http://localhost:3001', 
-    'http://192.168.137.128:3000'  // Your IP address
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://192.168.137.128:3000',
+    'https://ethiopia-problem-solver.netlify.app' // <-- ADD THIS LINE
   ]
 }));
 app.use(express.json());
