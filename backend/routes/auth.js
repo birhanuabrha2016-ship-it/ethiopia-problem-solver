@@ -79,11 +79,11 @@ router.post("/login", async (req, res) => {
 
     // Create JWT Token
     const jwt = require("jsonwebtoken");
-   const token = jwt.sign(
-  { id: user._id, email: user.email, role: user.role },
-  process.env.JWT_SECRET,  // ← Make sure it says THIS
-  {  expiresIn: "30d"  }
-);
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "30d" }
+    );
 
     // Send response (without password)
     const userResponse = {
@@ -222,6 +222,30 @@ router.post("/reset-password/:token", async (req, res) => {
     await user.save();
     
     res.status(200).json({ message: "Password reset successfully! You can now login." });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error });
+  }
+});
+
+// =============================================
+// NEW ENDPOINT FOR PROFILE PICTURE UPLOAD
+// =============================================
+
+// UPDATE PROFILE PICTURE
+router.post("/users/profile-picture", auth, async (req, res) => {
+  try {
+    const { profilePicture } = req.body;
+    
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { profilePicture },
+      { new: true }
+    ).select('-password');
+    
+    res.status(200).json({
+      message: "Profile picture updated",
+      user
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
