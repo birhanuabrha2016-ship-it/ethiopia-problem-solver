@@ -4,7 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const User = require("../models/User");
 const auth = require("../middleware/auth");
-
+const fs = require('fs');
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -29,7 +29,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 10 * 1024 * 1024 // 5MB limit
   }
 });
 
