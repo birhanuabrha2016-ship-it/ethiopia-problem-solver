@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { showSuccess, showError } from '../utils/toast';
 import config from '../config';
@@ -7,6 +7,37 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [widget, setWidget] = useState(null);
+
+  const updateUserProfile = useCallback(async (imageUrl) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      showError('Please login first');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const response = await axios.post(
+        `${config.API_URL}/api/users/profile-picture`,
+        { profilePicture: imageUrl },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      // Update user in localStorage
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      if (onUpdate) onUpdate(response.data.user);
+      showSuccess('Profile picture updated successfully!');
+    } catch (error) {
+      showError('Failed to update profile');
+    } finally {
+      setUploading(false);
+    }
+  }, [onUpdate]); // Add onUpdate as dependency
 
   useEffect(() => {
     // Initialize Cloudinary widget when component mounts
@@ -41,44 +72,13 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
       );
       setWidget(uploadWidget);
     }
-  }, []);
+  }, [updateUserProfile]); // Add updateUserProfile as dependency
 
   const handleUpload = () => {
     if (widget) {
       widget.open();
     } else {
       showError('Cloudinary widget not loaded. Please refresh the page.');
-    }
-  };
-
-  const updateUserProfile = async (imageUrl) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showError('Please login first');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const response = await axios.post(
-        `${config.API_URL}/api/users/profile-picture`,
-        { profilePicture: imageUrl },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      );
-
-      // Update user in localStorage
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      if (onUpdate) onUpdate(response.data.user);
-      showSuccess('Profile picture updated successfully!');
-    } catch (error) {
-      showError('Failed to update profile');
-    } finally {
-      setUploading(false);
     }
   };
 
