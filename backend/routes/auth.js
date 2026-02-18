@@ -8,7 +8,9 @@ const auth = require("../middleware/auth");
 const crypto = require('crypto');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/emailService');
 
+// =============================================
 // REGISTER USER (AUTO-CONFIRMED FOR TESTING)
+// =============================================
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password, bio } = req.body;
@@ -55,7 +57,9 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// =============================================
 // LOGIN USER
+// =============================================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -105,7 +109,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
+// =============================================
 // GET USER PROFILE (Protected)
+// =============================================
 router.get("/profile/:userId", auth, async (req, res) => {
   try {
     const user = await User.findById(req.params.userId).select('-password');
@@ -120,7 +126,9 @@ router.get("/profile/:userId", auth, async (req, res) => {
   }
 });
 
+// =============================================
 // GET USER'S QUESTIONS
+// =============================================
 router.get("/:userId/questions", async (req, res) => {
   try {
     const questions = await Question.find({ user: req.params.userId })
@@ -132,7 +140,9 @@ router.get("/:userId/questions", async (req, res) => {
   }
 });
 
+// =============================================
 // GET USER'S ANSWERS
+// =============================================
 router.get("/:userId/answers", async (req, res) => {
   try {
     const answers = await Answer.find({ user: req.params.userId })
@@ -145,7 +155,9 @@ router.get("/:userId/answers", async (req, res) => {
   }
 });
 
+// =============================================
 // VERIFY EMAIL
+// =============================================
 router.get("/verify-email/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -171,7 +183,9 @@ router.get("/verify-email/:token", async (req, res) => {
   }
 });
 
+// =============================================
 // FORGOT PASSWORD
+// =============================================
 router.post("/forgot-password", async (req, res) => {
   try {
     const { email } = req.body;
@@ -197,7 +211,9 @@ router.post("/forgot-password", async (req, res) => {
   }
 });
 
+// =============================================
 // RESET PASSWORD
+// =============================================
 router.post("/reset-password/:token", async (req, res) => {
   try {
     const { token } = req.params;
@@ -228,10 +244,8 @@ router.post("/reset-password/:token", async (req, res) => {
 });
 
 // =============================================
-// NEW ENDPOINT FOR PROFILE PICTURE UPLOAD
+// UPDATE PROFILE PICTURE (NEW ENDPOINT)
 // =============================================
-
-// UPDATE PROFILE PICTURE
 router.post("/users/profile-picture", auth, async (req, res) => {
   try {
     const { profilePicture } = req.body;
@@ -243,7 +257,7 @@ router.post("/users/profile-picture", auth, async (req, res) => {
     ).select('-password');
     
     res.status(200).json({
-      message: "Profile picture updated",
+      message: "Profile picture updated successfully",
       user
     });
   } catch (error) {
@@ -251,4 +265,7 @@ router.post("/users/profile-picture", auth, async (req, res) => {
   }
 });
 
+// =============================================
+// EXPORT ROUTER
+// =============================================
 module.exports = router;
