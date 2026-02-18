@@ -1,54 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { showSuccess, showError } from '../utils/toast';
+import config from '../config';
 
 function ProfilePictureUpload({ currentUser, onUpdate }) {
-  const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [widget, setWidget] = useState(null);
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      setPreview(URL.createObjectURL(file));
+  useEffect(() => {
+    // Initialize Cloudinary widget when component mounts
+    if (window.cloudinary) {
+      const uploadWidget = window.cloudinary.createUploadWidget(
+        {
+          cloudName: 'dvhoqzacn', // Your cloud name
+          uploadPreset: 'profile_pictures', // Your upload preset
+          sources: ['local', 'camera'],
+          multiple: false,
+          maxFileSize: 5000000, // 5MB limit
+          clientAllowedFormats: ['image'],
+          cropping: true,
+          croppingAspectRatio: 1,
+          showSkipCropButton: false,
+          folder: 'profiles'
+        },
+        async (error, result) => {
+          if (!error && result && result.event === 'success') {
+            // Get the uploaded image URL
+            const imageUrl = result.info.secure_url;
+            
+            // Show preview
+            setPreview(imageUrl);
+            
+            // Send the URL to your backend
+            await updateUserProfile(imageUrl);
+          } else if (error) {
+            showError('Upload failed: ' + error);
+          }
+        }
+      );
+      setWidget(uploadWidget);
+    }
+  }, []);
+
+  const handleUpload = () => {
+    if (widget) {
+      widget.open();
+    } else {
+      showError('Cloudinary widget not loaded. Please refresh the page.');
     }
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      showError('Please select a file first');
-      return;
-    }
-
+  const updateUserProfile = async (imageUrl) => {
     const token = localStorage.getItem('token');
     if (!token) {
       showError('Please login first');
       return;
     }
 
-    const formData = new FormData();
-    formData.append('profilePicture', selectedFile);
-
     setUploading(true);
     try {
       const response = await axios.post(
-        'http://localhost:5000/api/upload/profile-picture',
-        formData,
+        `${config.API_URL}/api/users/profile-picture`,
+        { profilePicture: imageUrl },
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           }
         }
       );
 
-      showSuccess('Profile picture updated!');
+      // Update user in localStorage
       localStorage.setItem('user', JSON.stringify(response.data.user));
       if (onUpdate) onUpdate(response.data.user);
-      setSelectedFile(null);
+      showSuccess('Profile picture updated successfully!');
     } catch (error) {
-      showError(error.response?.data?.message || 'Upload failed');
+      showError('Failed to update profile');
     } finally {
       setUploading(false);
     }
@@ -77,32 +105,13 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
         />
       </div>
 
-      <input
-        type="file"
-        id="profile-upload"
-        accept="image/*"
-        onChange={handleFileSelect}
-        style={{ display: 'none' }}
-      />
-      
-      <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-        <button
-          className="btn btn-secondary"
-          onClick={() => document.getElementById('profile-upload').click()}
-        >
-          Choose Photo
-        </button>
-        
-        {selectedFile && (
-          <button
-            className="btn btn-primary"
-            onClick={handleUpload}
-            disabled={uploading}
-          >
-            {uploading ? 'Uploading...' : 'Upload'}
-          </button>
-        )}
-      </div>
+      <button
+        className="btn btn-primary"
+        onClick={handleUpload}
+        disabled={uploading}
+      >
+        {uploading ? 'Updating...' : 'Change Profile Photo'}
+      </button>
     </div>
   );
 }
