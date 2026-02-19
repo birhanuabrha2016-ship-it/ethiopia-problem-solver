@@ -10,6 +10,7 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
 
   useEffect(() => {
     // Initialize Cloudinary widget when component mounts
+    console.log('Cloudinary available:', !!window.cloudinary);
     if (window.cloudinary) {
       const uploadWidget = window.cloudinary.createUploadWidget(
         {
@@ -25,6 +26,7 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
           folder: 'profiles'
         },
         async (error, result) => {
+          console.log('Cloudinary result:', { error, result });
           if (!error && result && result.event === 'success') {
             // Get the uploaded image URL
             const imageUrl = result.info.secure_url;
@@ -35,11 +37,14 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
             // Send the URL to your backend
             await updateUserProfile(imageUrl);
           } else if (error) {
+            console.error('Cloudinary error:', error);
             showError('Upload failed: ' + error);
           }
         }
       );
       setWidget(uploadWidget);
+    } else {
+      console.error('Cloudinary widget not loaded');
     }
   }, []);
 
@@ -76,7 +81,10 @@ function ProfilePictureUpload({ currentUser, onUpdate }) {
       if (onUpdate) onUpdate(response.data.user);
       showSuccess('Profile picture updated successfully!');
     } catch (error) {
-      showError('Failed to update profile');
+      console.error('Profile update error:', error);
+      console.error('Error response:', error.response);
+      console.error('Error message:', error.message);
+      showError('Failed to update profile: ' + (error.response?.data?.message || error.message));
     } finally {
       setUploading(false);
     }
