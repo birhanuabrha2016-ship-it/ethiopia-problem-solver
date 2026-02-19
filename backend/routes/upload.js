@@ -33,20 +33,19 @@ const upload = multer({
   }
 });
 
-// Upload profile picture
-router.post("/profile-picture", auth, upload.single('profilePicture'), async (req, res) => {
+// Upload profile picture (accept Cloudinary URL)
+router.post("/profile-picture", auth, async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Please upload an image" });
+    const { profilePicture } = req.body;
+    
+    if (!profilePicture) {
+      return res.status(400).json({ message: "Please provide a profile picture URL" });
     }
 
-    // Create URL for the uploaded file
-    const profilePictureUrl = `http://localhost:5000/uploads/profiles/${req.file.filename}`;
-
-    // Update user in database
+    // Update user in database with Cloudinary URL
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { profilePicture: profilePictureUrl },
+      { profilePicture: profilePicture },
       { new: true }
     ).select('-password');
 
