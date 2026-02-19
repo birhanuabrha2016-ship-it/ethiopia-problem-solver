@@ -36,6 +36,9 @@ const upload = multer({
 // Upload profile picture (accept Cloudinary URL)
 router.post("/profile-picture", auth, async (req, res) => {
   try {
+    console.log('Upload request received:', req.body);
+    console.log('User from auth middleware:', req.user);
+    
     const { profilePicture } = req.body;
     
     if (!profilePicture) {
